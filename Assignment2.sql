@@ -1,0 +1,145 @@
+/*
+NAME: HAE YEON KANG (LUCY)
+THIS IS ADVANCED DATABASE ASSIGNMENT 2.
+*/
+
+USE SAMPLE;
+
+/*
+Create Table, Index and View Questions:
+
+Question 1 (15 marks)
+Create a View (V_EMP_DEPT_PROJ) statement that joins the EMPLOYEE and EMPPROJACT (join on EMPNO)  and PROJECT table (join on PROJNO).  
+Limit the view to contain :
+o	Empno
+o	Name (FirstName and Lastname)
+o	WorkDept
+o	Salary
+o	ACTNO
+o	PROJNO
+o	PROJNAME
+o	Where Salary < 100000
+*/
+CREATE VIEW V_EMP_DEPT_PROJ AS
+SELECT DISTINCT E.EMPNO, CONCAT(FIRSTNME, ' ', LASTNAME) AS NAME, WORKDEPT, SALARY, ACTNO, P.PROJNO, P.PROJNAME
+FROM 			EMPPROJACT EP, EMPLOYEE E, PROJECT P
+WHERE 			E.EMPNO = EP.EMPNO
+				AND EP.PROJNO = P.PROJNO
+				AND SALARY < 100000 
+ORDER BY 		E.EMPNO, ACTNO;
+
+SELECT *
+FROM V_EMP_DEPT_PROJ;
+
+#DROP VIEW V_EMP_DEPT_PROJ;
+
+/*
+Question 2 (10 marks)
+Create an INDEX statement that would speed up the following query on the EMPLOYEE table.
+    select * from employee where hiredate > '2001-01-01';
+	
+Create an INDEX statement that would speed up the following query on the STAFF table.
+    select * from staff where YEARS > 3 AND SALARY BETWEEN 45000 AND 100000 ;
+*/
+CREATE INDEX EMPLOYEE_HIREDATE
+ON	   EMPLOYEE(HIREDATE);
+ 
+CREATE INDEX STAFF_YEARS_SALARY
+ON	   STAFF(YEARS, SALARY);
+ 
+/*
+Question 3 (25 marks )
+Write the 3 CREATE TABLE statements for the tables in the following diagram with Primary Keys  and Foreign Keys 
+(Make sure columns are defined with appropriate data types  (Dt column would be a Date), 
+and configure the PK to create an ID number automatically on insert).  
+
+Create 5 INSERT statements for each of the tables and  
+Create a SELECT statement that gets the following columns CaseManagerID, SupervisorID, AuditedDt, UpdatedBy, FName, LName.
+*/
+CREATE TABLE CASEMANAGERS(
+	CASEMANAGERID 	INT(6) NOT NULL AUTO_INCREMENT,
+	FNAME 			VARCHAR(20) NOT NULL,
+    LNAME 			VARCHAR(20) NOT NULL,
+    PRIMARY KEY (CASEMANAGERID)
+);
+
+CREATE TABLE CASEAUDITS(
+	CASEAUDITID				INT(6) NOT NULL AUTO_INCREMENT,
+    AUDITEDCASEMANAGERID	INT(6) NOT NULL,
+    AUDITINGSUPERVISORID	INT(6) NOT NULL,
+    AUDITEDOFFENDERCD		VARCHAR(3) NOT NULL,
+    AUDITEDDT				DATE NOT NULL,
+    LASTUPDATED				DATE NOT NULL,
+    UPDATEDBY				VARCHAR(20) NOT NULL,
+    PRIMARY KEY (CASEAUDITID),
+    FOREIGN KEY (AUDITEDCASEMANAGERID) REFERENCES CASEMANAGERS(CASEMANAGERID)
+);
+
+CREATE TABLE CMSUPERVISORS(
+	SUPERVISORID	INT(6) NOT NULL AUTO_INCREMENT,
+    CASEMANAGERID	INT(6) NOT NULL,
+    PRIMARY KEY (SUPERVISORID, CASEMANAGERID),
+    FOREIGN KEY (CASEMANAGERID) REFERENCES CASEMANAGERS(CASEMANAGERID)
+);
+
+INSERT INTO CASEMANAGERS (FNAME, LNAME)
+	   VALUES ('LUCY', 'KANG'), ('CINDY', 'DIAZ'), ('MATT', 'LANGILLE'), ('LOGAN', 'KANG'), ('MIRAN', 'CHA');
+
+INSERT INTO CASEAUDITS (AUDITEDCASEMANAGERID, AUDITINGSUPERVISORID, AUDITEDOFFENDERCD, AUDITEDDT, LASTUPDATED, UPDATEDBY)
+	   VALUES   (1, 000001, '111', '2015-02-25', '2015-05-15', 'LUCY'),
+				(3, 000002,'112','2015-03-21','2015-06-01','CINDY'),
+                (5, 000003, '113', '2015-01-15', '2015-02-18', 'MATT'),
+                (4, 000002, '114', '2015-04-13', '2015-08-08', 'CINDY'),
+                (2, 000005, '115', '2015-07-31', '2015-08-05', 'LUCY');
+                
+INSERT INTO CMSUPERVISORS (CASEMANAGERID) VALUES (1), (3), (4), (2), (5);
+
+SELECT * FROM CASEMANAGERS;
+SELECT * FROM CASEAUDITS;
+SELECT * FROM CMSUPERVISORS;
+
+SELECT CM.CASEMANAGERID, CS.SUPERVISORID, AUDITEDDT, UPDATEDBY, FNAME, LNAME
+FROM CASEMANAGERS CM, CASEAUDITS CA, CMSUPERVISORS CS
+WHERE CA.AUDITEDCASEMANAGERID = CM.CASEMANAGERID AND CM.CASEMANAGERID = CS.CASEMANAGERID;
+
+/*
+Question 4 (25 marks)
+Create a stored procedure (P_SYS_TABLE) that lists TABLE_NAME, TABLE_ROWS, COLUMN_NAME and DATA_TYPE for the TABLES 
+in the SAMPLE database that have VARCHAR columns with a CHARACTER_MAXIMUM_LENGTH > 5.  
+You will find this information by using a SELECT on the INFORMATION_SCHEMA.  
+*/
+CREATE PROCEDURE P_SYS_TABLE()
+BEGIN
+	SELECT T.TABLE_NAME, TABLE_ROWS, COLUMN_NAME, DATA_TYPE
+    FROM INFORMATION_SCHEMA.TABLES T, INFORMATION_SCHEMA.COLUMNS C
+    WHERE T.TABLE_NAME = C.TABLE_NAME AND T.TABLE_SCHEMA = 'sample' AND DATA_TYPE = 'VARCHAR' AND CHARACTER_MAXIMUM_LENGTH > 5 ;
+END
+
+CALL P_SYS_TABLE();
+
+/*
+Question 5 (25 marks)
+Create a stored procedure (P_FACT_RESULT)  that accepts one IN parameter (n_factor), and has one OUT parameter (n_result).  
+Use a CASE structure to control the output:
+
+o	Input is >=  3 , Output is n_factor *1.1
+o	Input is >=6 , Output is n_factor*1.3
+o	Input is >=12 , Output is n_factor*1.5
+o	Input is >=17 , Output is n_factor*1.7
+o	Input is >=24 , Output is n_factor*1.9
+o	Else Ouput n_factor * 0.5
+*/
+CREATE PROCEDURE P_FACT_RESULT(IN N_FACTOR INTEGER, OUT N_RESULT DOUBLE)
+BEGIN
+	CASE
+		WHEN N_FACTOR >=24 THEN SET N_RESULT = N_FACTOR * 1.9;
+        WHEN N_FACTOR >=17 THEN SET N_RESULT = N_FACTOR * 1.7;
+        WHEN N_FACTOR >=12 THEN SET N_RESULT = N_FACTOR * 1.5;
+        WHEN N_FACTOR >= 6 THEN SET N_RESULT = N_FACTOR * 1.3;
+		WHEN N_FACTOR >= 3 THEN SET N_RESULT = N_FACTOR * 1.1;
+        ELSE SET N_RESULT = N_FACTOR * 0.5;
+	END CASE;
+END
+
+CALL P_FACT_RESULT(12, @OUTPUT);
+SELECT @OUTPUT;
